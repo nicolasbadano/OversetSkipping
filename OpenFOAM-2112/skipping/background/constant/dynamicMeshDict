@@ -1,0 +1,80 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2112                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+motionSolverLibs    (sixDoFRigidBodyMotion);
+
+dynamicFvMesh       dynamicOversetFvMesh;
+
+solver          sixDoFRigidBodyMotion;
+
+sixDoFRigidBodyMotionCoeffs
+{
+    velocity (4.806 0 -1.378); // 5m/s - -16º
+
+    patches         (movingObject);
+    innerDistance   100.0;
+    outerDistance   101.0;
+
+    centreOfMass    (0 0 0.04);
+
+    //-10º rotation on y
+    transform       (0.9848 -0.1736 0 0.1736 0.9848 0 0 0 1) (0 0 0.04);
+
+    // Cuboid dimensions
+    Lx              0.03;
+    Ly              0.03;
+    Lz              0.005;
+
+    // Density of the solid
+    rhoSolid        2700;
+
+    // Cuboid mass
+    mass            #eval{ $rhoSolid*sqr($Ly/2)*3.1416*$Lz };
+
+    // Cuboid moment of inertia about the centre of mass
+    momentOfInertia #codeStream
+    {
+        codeInclude
+        #{
+            #include "diagTensor.H"
+        #};
+
+        code
+        #{
+            scalar sqrR = sqr($Ly/2);
+            scalar sqrLz = sqr($Lz);
+            os  <<
+                $mass
+               *diagTensor(sqrLz / 12.0 + sqrR / 4.0, sqrLz / 12.0 + sqrR / 4.0, sqrR / 4.0);
+        #};
+    };
+
+    report          on;
+    accelerationRelaxation 0.6;
+    accelerationDamping    0.9;
+
+    solver
+    {
+        type Newmark;
+    }
+
+    constraints
+    {
+    }
+}
+
+
+// ************************************************************************* //
